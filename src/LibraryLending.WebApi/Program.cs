@@ -1,13 +1,11 @@
 using FluentValidation;
-using LibraryLending.Application.UseCases.Books.AddBook;
-using LibraryLending.Application.UseCases.Books.GetBooks;
-using LibraryLending.Application.UseCases.Loans.LoanBook;
-using LibraryLending.Application.UseCases.Loans.ReturnBook;
-using LibraryLending.Application.UseCases.Patrons.GetPatron;
+using LibraryLending.Application.UseCases.Notifications.ProcessOverdueNotifications;
 using LibraryLending.Application.UseCases.Patrons.RegisterPatron;
 using LibraryLending.Domain.Repositories;
+using LibraryLending.Domain.Services;
 using LibraryLending.Infrastructure.Data;
 using LibraryLending.Infrastructure.Repositories;
+using LibraryLending.Infrastructure.Services;
 using LibraryLending.WebApi.Middleware;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +31,14 @@ builder.Services.AddDbContext<LibraryDbContext>(options =>
 builder.Services.AddScoped<IBookRepository, BookRepository>();
 builder.Services.AddScoped<IPatronRepository, PatronRepository>();
 builder.Services.AddScoped<ILoanRepository, LoanRepository>();
+builder.Services.AddScoped<IOverdueNotificationRepository, OverdueNotificationRepository>();
+
+// Add services
+builder.Services.AddScoped<INotificationService, EmailNotificationService>();
+builder.Services.AddScoped<ProcessOverdueNotificationsCommandHandler>();
+
+// Add background service
+builder.Services.AddHostedService<OverdueNotificationBackgroundService>();
 
 var app = builder.Build();
 
@@ -76,11 +82,27 @@ static async Task SeedDataAsync(WebApplication app)
     
     if (!context.Patrons.Any())
     {
-        var patron = new LibraryLending.Domain.Entities.Patron(
+        var patron1 = new LibraryLending.Domain.Entities.Patron(
             "John Doe",
             LibraryLending.Domain.ValueObjects.Email.Create("john.doe@example.com"));
             
-        context.Patrons.Add(patron);
+        var patron2 = new LibraryLending.Domain.Entities.Patron(
+            "Jane Smith", 
+            LibraryLending.Domain.ValueObjects.Email.Create("jane.smith@example.com"));
+            
+        context.Patrons.AddRange(patron1, patron2);
+        await context.SaveChangesAsync();
+        
+        // Create some overdue loans for testing
+        var book = context.Books.First();
+        var overdueDate = DateTime.UtcNow.AddDays(-20); // 20 days ago, overdue by 6 days
+        
+        var overdueLoan = new LibraryLending.Domain.Entities.Loan(
+            book.Id, 
+            patron1.Id, 
+            overdueDate);
+            
+        context.Loans.Add(overdueLoan);
     }
     
     await context.SaveChangesAsync();
