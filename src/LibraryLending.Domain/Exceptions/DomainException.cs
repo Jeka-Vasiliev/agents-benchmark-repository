@@ -18,6 +18,11 @@ public class LoanAlreadyReturnedException : DomainException
         : base($"Loan with ID {loanId} has already been returned.") { }
 }
 
+public class NotificationException : DomainException
+{
+    public NotificationException(string message) : base(message) { }
+}
+
 public class PatronEmailAlreadyExistsException : DomainException
 {
     public PatronEmailAlreadyExistsException(string email) 

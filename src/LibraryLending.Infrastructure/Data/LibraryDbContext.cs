@@ -11,6 +11,7 @@ public class LibraryDbContext : DbContext
     public DbSet<Book> Books { get; set; } = null!;
     public DbSet<Patron> Patrons { get; set; } = null!;
     public DbSet<Loan> Loans { get; set; } = null!;
+    public DbSet<OverdueNotification> OverdueNotifications { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,6 +21,7 @@ public class LibraryDbContext : DbContext
         modelBuilder.Entity<Book>().ToTable("books");
         modelBuilder.Entity<Patron>().ToTable("patrons");
         modelBuilder.Entity<Loan>().ToTable("loans");
+        modelBuilder.Entity<OverdueNotification>().ToTable("overdue_notifications");
 
         // Configure Book entity
         modelBuilder.Entity<Book>(entity =>
@@ -126,6 +128,61 @@ public class LibraryDbContext : DbContext
             entity.HasIndex(e => e.BookId);
             entity.HasIndex(e => e.PatronId);
             entity.HasIndex(e => new { e.PatronId, e.ReturnedAt });
+        });
+
+        // Configure OverdueNotification entity
+        modelBuilder.Entity<OverdueNotification>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+
+            entity.Property(e => e.LoanId)
+                .HasColumnName("loan_id")
+                .IsRequired();
+
+            entity.Property(e => e.PatronId)
+                .HasColumnName("patron_id")
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .IsRequired();
+
+            entity.Property(e => e.SentAt)
+                .HasColumnName("sent_at");
+
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .IsRequired()
+                .HasConversion<string>();
+
+            entity.Property(e => e.ErrorMessage)
+                .HasColumnName("error_message")
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.RetryCount)
+                .HasColumnName("retry_count")
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.NextRetryAt)
+                .HasColumnName("next_retry_at");
+
+            // Relationships
+            entity.HasOne(e => e.Loan)
+                .WithMany()
+                .HasForeignKey(e => e.LoanId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Patron)
+                .WithMany()
+                .HasForeignKey(e => e.PatronId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Indexes
+            entity.HasIndex(e => e.LoanId).IsUnique();
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.NextRetryAt);
         });
     }
 }

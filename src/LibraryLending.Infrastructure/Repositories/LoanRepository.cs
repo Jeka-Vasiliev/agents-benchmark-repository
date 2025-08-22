@@ -32,6 +32,17 @@ public class LoanRepository : ILoanRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IEnumerable<Loan>> GetOverdueLoansAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        return await _context.Loans
+            .Include(l => l.Book)
+            .Include(l => l.Patron)
+            .Where(l => l.ReturnedAt == null && l.DueAt < now)
+            .OrderBy(l => l.DueAt)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Loan loan, CancellationToken cancellationToken = default)
     {
         _context.Loans.Add(loan);

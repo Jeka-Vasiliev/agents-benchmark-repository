@@ -1,4 +1,5 @@
 using FluentValidation;
+using LibraryLending.Application.Services;
 using LibraryLending.Application.UseCases.Books.AddBook;
 using LibraryLending.Application.UseCases.Books.GetBooks;
 using LibraryLending.Application.UseCases.Loans.LoanBook;
@@ -6,8 +7,10 @@ using LibraryLending.Application.UseCases.Loans.ReturnBook;
 using LibraryLending.Application.UseCases.Patrons.GetPatron;
 using LibraryLending.Application.UseCases.Patrons.RegisterPatron;
 using LibraryLending.Domain.Repositories;
+using LibraryLending.Domain.Services;
 using LibraryLending.Infrastructure.Data;
 using LibraryLending.Infrastructure.Repositories;
+using LibraryLending.Infrastructure.Services;
 using LibraryLending.WebApi.Middleware;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +36,13 @@ builder.Services.AddDbContext<LibraryDbContext>(options =>
 builder.Services.AddScoped<IBookRepository, BookRepository>();
 builder.Services.AddScoped<IPatronRepository, PatronRepository>();
 builder.Services.AddScoped<ILoanRepository, LoanRepository>();
+builder.Services.AddScoped<IOverdueNotificationRepository, OverdueNotificationRepository>();
+
+// Add domain services
+builder.Services.AddScoped<IEmailService, EmailService>();
+
+// Add background services
+builder.Services.AddHostedService<OverdueNotificationBackgroundService>();
 
 var app = builder.Build();
 
